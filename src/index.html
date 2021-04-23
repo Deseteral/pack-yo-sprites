@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dead simple sprite packer">
+  <title>Pack yo sprites!</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Knewave&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧳</text></svg>">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'Knewave', cursive;
+    }
+
+    body {
+      background-color: #542e71;
+      color: #fdca40;
+      font-size: 32px;
+    }
+
+    .main-column {
+      max-width: 1040px;
+    }
+
+    .number-picker {
+      background-color: #a799b73b;
+      color: #fb3640;
+      border: none;
+      font-size: 32px;
+      width: 96px;
+      border-radius: 4px;
+      text-align: center;
+      margin: 0 8px;
+      outline: none;
+
+      transition: background-color .3s, box-shadow .3s;
+    }
+
+    .number-picker:focus {
+      background-color: #a799b79f;
+      box-shadow: 0 0 11px 4px #fb3640;
+    }
+
+    .button {
+      color: #fb3640;
+      background-color: #fdca40;
+      border: none;
+      font-size: 32px;
+      border-radius: 16px;
+      padding: 16px 32px;
+      cursor: pointer;
+      transition: box-shadow .3s ease-in-out;
+      box-shadow: 0 0 14px 13px #fb364040;
+    }
+
+    .button:hover {
+      box-shadow: 0 0 19px 16px #fb3640a8;
+    }
+
+    .header {
+      font-size: 96px;
+      margin: 64px 0;
+      line-height: 86px;
+      color: #fb3640;
+      text-align: center;
+    }
+
+    .app-info-text {
+      text-align: center;
+    }
+
+    .subtitle {
+      font-size: 24px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .spacer-right {
+      margin-right: 16px;
+    }
+
+    .spacer-bottom {
+      margin-bottom: 16px;
+    }
+
+    .github-link {
+      position: fixed;
+      right: 8px;
+      top: 8px;
+      color: white;
+      text-decoration: none;
+      font-size: 18px;
+
+      display: flex;
+      align-items: center;
+    }
+
+    .github-link:hover {
+      text-decoration: underline;
+    }
+
+    .github-link .github-logo {
+      margin-left: 8px;
+    }
+
+    .texture-size-info {
+      font-size: 16px;
+      text-align: right;
+      flex: 1;
+      align-self: flex-start;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      object-fit: contain;
+    }
+
+    #canvasContainer {
+      width: 512px;
+      height: 512px;
+
+      padding: 8px;
+
+      border: #fb3640;
+      border-style: dashed;
+      border-radius: 12px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body class="column">
+  <main class="column main-column">
+    <h1 class="header">🤜🧳🏞🤛<br>Pack yo sprites!</h1>
+    <div class="subtitle spacer-bottom app-info-text">
+      <div>Dead simple sprite packer. It bakes separate sprites to a single texture on nice and even grid.</div>
+      <div>All operations are done locally, no files are sent anywhere.</div>
+    </div>
+
+    <div class="column">
+      <section class="spacer-bottom row">
+        <div class="spacer-right">Grid size:</div>
+        <input type="number" name="gridWidth" value="4" class="number-picker">
+        <span>x</span>
+        <input type="number" name="gridHeight" value="4" class="number-picker">
+      </section>
+
+      <section class="spacer-bottom">
+        <input type="file" name="filePicker" multiple="multiple"  accept="image/*" class="hidden">
+        <button id="openSpritesButton" class="button">🗃 Pick files</button>
+      </section>
+
+      <section>
+        <div id="canvasContainer">
+          🎨<br>Pick sprite files to generate atlas from
+        </div>
+        <div class="row">
+          <div class="subtitle hidden" id="saveInfo">☝️ Click on texture to 💾 save</div>
+          <div class="texture-size-info hidden"></div>
+        </div>
+
+        <a id="saveLink" rel="nofollow" class="hidden"></a>
+      </section>
+
+      <a href="https://github.com/Deseteral/pack-yo-sprites" target="_blank" class="github-link">
+        Check out the source on GitHub
+        <img src="github-mark.png" class="github-logo">
+      </a>
+    </div>
+  </main>
+
+  <script>
+    document
+      .querySelector('#openSpritesButton')
+      .addEventListener('click', () => filePickerInput.click());
+
+    const filePickerInput = document.querySelector('input[name="filePicker"]');
+    const gridWidthInput = document.querySelector('input[name="gridWidth"]');
+    const gridHeightInput = document.querySelector('input[name="gridHeight"]');
+    const textureSizeInfoElement = document.querySelector('.texture-size-info');
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    filePickerInput.addEventListener('change', generateTexture, false);
+    gridWidthInput.addEventListener('change', generateTexture, false);
+    gridHeightInput.addEventListener('change', generateTexture, false);
+
+    async function generateTexture() {
+      const files = filePickerInput.files;
+      if (files.length === 0) return;
+
+      const images = await Promise.all([...files]
+        .sort(fileNameComparator)
+        .map(file => loadImageFromFile(file))
+      );
+
+      const gridWidth = gridWidthInput.value;
+      const gridHeight = gridHeightInput.value;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = (images[0].width * gridWidth);
+      canvas.height = (images[0].height * gridHeight);
+
+      canvas.addEventListener('click', () => saveCanvasToPng(canvas));
+
+      const ctx = canvas.getContext('2d');
+
+      for (let y = 0; y < gridHeight; y++) {
+        for (let x = 0; x < gridWidth; x++) {
+          let index = x + (y * gridWidth);
+          if (index >= images.length) continue;
+          const image = images[index];
+          ctx.drawImage(image, (x * image.width), (y * image.height));
+        }
+      }
+
+      canvasContainer.innerHTML = '';
+      canvasContainer.append(canvas);
+
+      document.getElementById('saveInfo').classList.remove('hidden');
+      setTextureSizeInfo(canvas);
+    }
+
+    function loadImageFromFile(file) {
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          URL.revokeObjectURL(img.src);
+          resolve(img);
+        }
+      });
+    }
+
+    function saveCanvasToPng(canvas) {
+      const link = document.getElementById('saveLink');
+      link.setAttribute('download', 'sheet.png');
+      link.setAttribute('href', canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream'));
+      link.click();
+    }
+
+    function fileNameComparator(fileA, fileB) {
+      return fileA.name.localeCompare(fileB.name);
+    }
+
+    function setTextureSizeInfo(canvas) {
+      const content = `${canvas.width} x ${canvas.height} px`;
+      textureSizeInfoElement.textContent = content;
+      textureSizeInfoElement.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
